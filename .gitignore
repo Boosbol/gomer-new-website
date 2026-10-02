@@ -1,0 +1,30 @@
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# environment variables — JANGAN PERNAH di-commit
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+.env.*.local
+!.env.example
+
+# misc
+.DS_Store
+*.pem
+*.key
+*.tsbuildinfo
+next-env.d.ts
+npm-debug.log*
+.vercel
+coverage

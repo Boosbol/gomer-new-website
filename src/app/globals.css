@@ -1,0 +1,48 @@
+@import "tailwindcss";
+
+/*
+ * Token desain. Situs publik memakai tema terang (paper/ink) dengan hero & footer gelap, meniru website lama.
+ * Token night/panel/line/bone/mute/flare dipakai khusus area admin (tema gelap).
+ */
+@theme inline {
+  --color-paper: #f1f1ec;
+  --color-ink: #1a1a1a;
+  --color-soft: #5f5f5f;
+  --color-rule: #bdbdbd;
+  --color-stamp: #c0272d;
+  --color-footer: #1b1b1b;
+
+  --color-night: #0f1c26;
+  --color-panel: #17293a;
+  --color-line: #2a4054;
+  --color-bone: #ece7dd;
+  --color-mute: #9fb2bf;
+  --color-flare: #ff7a59;
+
+  --font-display: var(--font-redhat-display), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-redhat-text), ui-sans-serif, system-ui, sans-serif;
+  --font-stamp: var(--font-rubik-dirt), Impact, ui-sans-serif, sans-serif;
+}
+
+html {
+  background: var(--color-paper);
+}
+
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+::selection {
+  background: var(--color-stamp);
+  color: #fff;
+}
