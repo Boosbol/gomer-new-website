@@ -1,7 +1,7 @@
 import "server-only";
 import { sql } from "drizzle-orm";
 import { getDb } from "@/lib/db";
-import { describeUrlStart } from "@/lib/env-clean";
+import { describeDatabaseUrl, describeUrlStart, type DatabaseUrlInfo } from "@/lib/env-clean";
 import { envProblems } from "@/lib/env";
 import { scrub } from "@/lib/logger";
 
@@ -14,6 +14,8 @@ export interface DatabaseStatus {
   hint: string | null;
   code: string | null;
   missingTables: string[];
+  /** Yang terbaca dari DATABASE_URL (tanpa password) agar bisa dicocokkan dengan hPanel. */
+  details: DatabaseUrlInfo | null;
 }
 
 function errorCode(error: unknown): string | null {
@@ -56,6 +58,7 @@ function hintFor(code: string | null, message: string): string {
 export async function checkDatabase(): Promise<DatabaseStatus> {
   const raw = process.env.DATABASE_URL;
   const problems = envProblems();
+  const details = describeDatabaseUrl(raw);
 
   if (!raw || raw.trim() === "") {
     return {
@@ -64,6 +67,7 @@ export async function checkDatabase(): Promise<DatabaseStatus> {
       hint: 'Variabel DATABASE_URL belum ada/kosong. Tambahkan di Environment variables aplikasi Node.js (nama harus persis "DATABASE_URL"), lalu tunggu deploy ulang.',
       code: null,
       missingTables: [],
+      details,
     };
   }
   if (problems.includes("DATABASE_URL")) {
@@ -73,6 +77,7 @@ export async function checkDatabase(): Promise<DatabaseStatus> {
       hint: `DATABASE_URL terbaca ${describeUrlStart(raw)}, padahal harus diawali "mysql://". Bentuk yang benar: mysql://USERNAME:PASSWORD@127.0.0.1:3306/NAMA_DATABASE — tanpa tanda kutip dan tanpa "jdbc:".`,
       code: null,
       missingTables: [],
+      details,
     };
   }
 
@@ -80,10 +85,10 @@ export async function checkDatabase(): Promise<DatabaseStatus> {
   try {
     db = getDb();
   } catch {
-    return { configured: true, connected: false, hint: "Gagal menyiapkan koneksi database. Lihat Runtime Logs.", code: null, missingTables: [] };
+    return { configured: true, connected: false, hint: "Gagal menyiapkan koneksi database. Lihat Runtime Logs.", code: null, missingTables: [], details };
   }
   if (!db) {
-    return { configured: false, connected: false, hint: "DATABASE_URL tidak dapat dibaca. Periksa penulisannya.", code: null, missingTables: [] };
+    return { configured: false, connected: false, hint: "DATABASE_URL tidak dapat dibaca. Periksa penulisannya.", code: null, missingTables: [], details };
   }
 
   try {
@@ -91,7 +96,7 @@ export async function checkDatabase(): Promise<DatabaseStatus> {
   } catch (error) {
     const code = errorCode(error);
     const ignored = problems.length > 0 ? ` (Variabel lain yang bentuknya salah dan diabaikan: ${problems.join(", ")}.)` : "";
-    return { configured: true, connected: false, hint: hintFor(code, messageOf(error)) + ignored, code, missingTables: [] };
+    return { configured: true, connected: false, hint: hintFor(code, messageOf(error)) + ignored, code, missingTables: [], details };
   }
 
   const missing: string[] = [];
@@ -108,6 +113,7 @@ export async function checkDatabase(): Promise<DatabaseStatus> {
     connected: true,
     code: null,
     missingTables: missing,
+    details,
     hint:
       missing.length > 0
         ? `${ignored}Terhubung, tetapi tabel belum lengkap. Impor database/schema.sql lewat phpMyAdmin (tab Import).`

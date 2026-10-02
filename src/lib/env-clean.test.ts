@@ -26,3 +26,27 @@ describe("env-clean", () => {
     expect(describeUrlStart("mysql://u:rahasia@h/db")).not.toContain("rahasia");
   });
 });
+
+import { describeDatabaseUrl } from "./env-clean";
+
+describe("describeDatabaseUrl", () => {
+  it("menguraikan bagian-bagian tanpa membocorkan password", () => {
+    const info = describeDatabaseUrl("mysql://u123456789_user:Rahasia-Panjang_123@127.0.0.1:3306/u123456789_db");
+    expect(info).toMatchObject({ user: "u123456789_user", host: "127.0.0.1", port: "3306", database: "u123456789_db", passwordLength: 19 });
+    expect(info?.warnings).toEqual([]);
+    expect(JSON.stringify(info)).not.toContain("Rahasia");
+  });
+  it("memperingatkan kesalahan umum", () => {
+    const warn = (u: string) => describeDatabaseUrl(u)?.warnings.join(" | ") ?? "";
+    expect(warn("mysql://u1_a:password-oke-123@localhost:3306/u1_db")).toContain("127.0.0.1");
+    expect(warn("mysql://admin:password-oke-123@127.0.0.1:3306/gomer")).toContain("awalan");
+    expect(warn("mysql://u1_a:password-oke-123@127.0.0.1:3306/u2_db")).toContain("berbeda");
+    expect(warn("mysql://u1_a:pendek@127.0.0.1:3306/u1_db")).toContain("terpotong");
+    expect(warn("mysql:// u1_a:password-oke-123@127.0.0.1:3306/u1_db")).toContain("spasi");
+    expect(warn("mysql://u1_a:password-oke-123@127.0.0.1:3306/")).toContain("Nama database");
+  });
+  it("mengembalikan null untuk nilai yang tidak bisa dibaca", () => {
+    expect(describeDatabaseUrl(undefined)).toBeNull();
+    expect(describeDatabaseUrl("bukan url")).toBeNull();
+  });
+});

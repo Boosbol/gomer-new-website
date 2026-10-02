@@ -39,6 +39,24 @@ export default async function AdminHome() {
           {db.hint ? <p className="mt-2 text-bone/90">{db.hint}</p> : null}
           {db.code ? <p className="mt-1 text-xs text-mute">Kode: {db.code}</p> : null}
           {db.missingTables.length > 0 ? <p className="mt-1 text-xs text-mute">Tabel yang belum ada: {db.missingTables.join(", ")}</p> : null}
+          {db.details ? (
+            <div className="mt-3 rounded-md border border-line p-3 text-xs">
+              <p className="font-semibold text-bone">Yang terbaca dari DATABASE_URL (cocokkan dengan hPanel):</p>
+              <ul className="mt-1 space-y-0.5 text-mute">
+                <li>Username: <span className="text-bone">{db.details.user || "(kosong)"}</span></li>
+                <li>Nama database: <span className="text-bone">{db.details.database || "(kosong)"}</span></li>
+                <li>Host: <span className="text-bone">{db.details.host}</span> · Port: <span className="text-bone">{db.details.port}</span></li>
+                <li>Panjang password: <span className="text-bone">{db.details.passwordLength} karakter</span></li>
+              </ul>
+              {db.details.warnings.length > 0 ? (
+                <ul className="mt-2 list-disc space-y-0.5 pl-4 text-flare">
+                  {db.details.warnings.map((w) => (
+                    <li key={w}>{w}</li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
+          ) : null}
           {!ready ? (
             <p className="mt-3 text-mute">
               Selama database belum siap, unggah foto, link video, dan penyimpanan biodata <strong>tidak akan berfungsi</strong>. Setelah memperbaiki
