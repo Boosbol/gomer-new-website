@@ -50,3 +50,13 @@ describe("describeDatabaseUrl", () => {
     expect(describeDatabaseUrl("bukan url")).toBeNull();
   });
 });
+
+import { cleanUrlValue } from "./env-clean";
+
+describe("cleanUrlValue", () => {
+  it("membuang semua spasi dan baris baru di dalam URL", () => {
+    expect(cleanUrlValue("  mysql://u1_a: pass-123 @127.0.0.1:3306/ u1_db\n")).toBe("mysql://u1_a:pass-123@127.0.0.1:3306/u1_db");
+    expect(cleanUrlValue('"mysql://a:b@h/db"')).toBe("mysql://a:b@h/db");
+    expect(cleanUrlValue("   ")).toBeUndefined();
+  });
+});

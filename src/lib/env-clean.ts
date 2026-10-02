@@ -10,6 +10,12 @@ export function cleanEnvValue(v: unknown): unknown {
   return s === "" ? undefined : s;
 }
 
+/** Untuk URL: selain pembersihan biasa, SEMUA spasi/baris baru di dalamnya dibuang (URL tidak boleh berspasi). */
+export function cleanUrlValue(v: unknown): unknown {
+  const c = cleanEnvValue(v);
+  return typeof c === "string" ? c.replace(/\s+/g, "") || undefined : c;
+}
+
 export const lowerEnvValue = (v: unknown) => {
   const c = cleanEnvValue(v);
   return typeof c === "string" ? c.toLowerCase() : c;
@@ -44,7 +50,7 @@ export function describeDatabaseUrl(raw: string | undefined): DatabaseUrlInfo | 
   if (!raw) return null;
   const trimmed = raw.trim();
   const warnings: string[] = [];
-  if (/\s/.test(trimmed)) warnings.push("Ada spasi di dalam alamat — alamat harus ditulis tanpa spasi sama sekali.");
+  if (/\s/.test(trimmed)) warnings.push("Ada spasi/baris baru di dalam nilai DATABASE_URL (biasanya ikut tersalin dari terminal). Aplikasi otomatis membuangnya, tetapi sebaiknya ketik ulang alamat tanpa spasi.");
 
   let url: URL;
   try {

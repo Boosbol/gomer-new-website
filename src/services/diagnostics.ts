@@ -42,7 +42,7 @@ function messageOf(error: unknown): string {
 function hintFor(code: string | null, message: string): string {
   const text = `${code ?? ""} ${message}`.toLowerCase();
   if (code === "ER_ACCESS_DENIED_ERROR" || text.includes("access denied"))
-    return "Username atau password database salah. Periksa DATABASE_URL (password dengan karakter @ : / # harus di-encode, contoh @ → %40).";
+    return "Username atau password ditolak server database. Pastikan password di alamat SAMA dengan password user itu di hPanel (jika ragu: hPanel → Databases → Change password, lalu perbarui alamatnya). Password dengan karakter @ : / # harus di-encode (contoh @ → %40).";
   if (code === "ER_BAD_DB_ERROR" || text.includes("unknown database"))
     return "Nama database di DATABASE_URL tidak ditemukan. Periksa penulisan nama database (biasanya berawalan u123456789_).";
   if (code === "ECONNREFUSED") return "Server database menolak koneksi. Pastikan host 127.0.0.1 dan port 3306 (jika aplikasi & database di Hostinger yang sama).";

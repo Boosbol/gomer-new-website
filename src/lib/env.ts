@@ -1,7 +1,7 @@
 import "server-only";
 import { z } from "zod";
 import { site } from "../config/site";
-import { cleanEnvValue, isMysqlUrl, lowerEnvValue } from "./env-clean";
+import { cleanEnvValue, cleanUrlValue, isMysqlUrl, lowerEnvValue } from "./env-clean";
 
 /**
  * Validasi environment variable SERVER-SIDE (server-only: build gagal bila ada Client Component yang
@@ -19,7 +19,7 @@ const fields = {
   SPOTIFY_CLIENT_SECRET: text(z.string()),
   SPOTIFY_REFRESH_TOKEN: text(z.string()),
   YOUTUBE_CHANNEL_ID: text(z.string().regex(/^UC[\w-]{22}$/)),
-  DATABASE_URL: text(z.string().refine(isMysqlUrl, "harus berawalan mysql://")),
+  DATABASE_URL: z.preprocess(cleanUrlValue, z.string().refine(isMysqlUrl, "harus berawalan mysql://").optional()),
   DATABASE_SSL: flag,
   ENABLE_STALE_SYNC: flag,
   MUSIC_SOURCE: z.preprocess(lowerEnvValue, z.enum(["apple", "spotify"]).optional()),
