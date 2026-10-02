@@ -18,9 +18,15 @@ export async function middleware(request: NextRequest) {
   const pass = process.env.ADMIN_PASSWORD;
   const cron = process.env.CRON_SECRET;
 
-  if (!user || !pass || pass.length < 12 || !cron || cron.length < 24) {
+  const problems: string[] = [];
+  if (!user) problems.push("ADMIN_USER belum diisi");
+  if (!pass) problems.push("ADMIN_PASSWORD belum diisi");
+  else if (pass.length < 12) problems.push("ADMIN_PASSWORD kurang dari 12 karakter");
+  if (!cron) problems.push("CRON_SECRET belum diisi");
+  else if (cron.length < 24) problems.push("CRON_SECRET kurang dari 24 karakter");
+  if (problems.length > 0 || !user || !pass || !cron) {
     return new NextResponse(
-      "Area admin dinonaktifkan: atur ADMIN_USER, ADMIN_PASSWORD (min. 12 karakter), dan CRON_SECRET (min. 24 karakter).",
+      `Area admin dinonaktifkan. Perbaiki environment variables lalu Redeploy: ${problems.join("; ")}.`,
       { status: 503, headers: baseHeaders },
     );
   }

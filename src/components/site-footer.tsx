@@ -41,7 +41,10 @@ export async function SiteFooter() {
           ) : null}
         </div>
         <p className="mt-10 text-sm text-white/60">
-          © {new Date().getFullYear()} {site.name}. Release info updates automatically from streaming platforms.
+          © {new Date().getFullYear()} {site.name}. Release info updates automatically from streaming platforms.{" "}
+          <Link href="/admin" rel="nofollow" className="ml-2 text-white/35 hover:text-white/80">
+            Admin
+          </Link>
         </p>
       </div>
     </footer>
