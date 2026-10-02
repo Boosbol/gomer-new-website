@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { adminEnvProblems, readAdminEnv } from "@/lib/admin-env";
 import { SESSION_COOKIE, sessionSecret, verifySessionToken } from "@/lib/session";
 
 /**
@@ -14,26 +15,17 @@ function withHeaders(res: NextResponse) {
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const user = process.env.ADMIN_USER;
-  const pass = process.env.ADMIN_PASSWORD;
-  const cron = process.env.CRON_SECRET;
-
-  const problems: string[] = [];
-  if (!user) problems.push("ADMIN_USER belum diisi");
-  if (!pass) problems.push("ADMIN_PASSWORD belum diisi");
-  else if (pass.length < 12) problems.push("ADMIN_PASSWORD kurang dari 12 karakter");
-  if (!cron) problems.push("CRON_SECRET belum diisi");
-  else if (cron.length < 24) problems.push("CRON_SECRET kurang dari 24 karakter");
-  if (problems.length > 0 || !user || !pass || !cron) {
+  const admin = readAdminEnv(process.env);
+  if (!admin) {
     return new NextResponse(
-      `Area admin dinonaktifkan. Perbaiki environment variables lalu Redeploy: ${problems.join("; ")}.`,
+      `Area admin dinonaktifkan. Perbaiki environment variables lalu Redeploy: ${adminEnvProblems(process.env).join("; ")}.`,
       { status: 503, headers: baseHeaders },
     );
   }
 
   if (pathname === "/admin/login") return withHeaders(NextResponse.next());
 
-  const ok = await verifySessionToken(sessionSecret(pass, cron), request.cookies.get(SESSION_COOKIE)?.value);
+  const ok = await verifySessionToken(sessionSecret(admin.password, admin.cron), request.cookies.get(SESSION_COOKIE)?.value);
   if (ok) return withHeaders(NextResponse.next());
 
   if (pathname.startsWith("/api/")) {

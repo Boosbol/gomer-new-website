@@ -1,6 +1,5 @@
 import "server-only";
 import { createHash, timingSafeEqual } from "node:crypto";
-import { getEnv } from "./env";
 
 function safeEqual(a: string, b: string): boolean {
   const ha = createHash("sha256").update(a).digest();
@@ -10,13 +9,8 @@ function safeEqual(a: string, b: string): boolean {
 
 /** Memeriksa header "Authorization: Bearer <CRON_SECRET>" secara constant-time. */
 export function verifyBearer(request: Request): "ok" | "unauthorized" | "disabled" {
-  let secret: string | undefined;
-  try {
-    secret = getEnv().CRON_SECRET;
-  } catch {
-    return "disabled";
-  }
-  if (!secret) return "disabled"; // fail closed: tanpa secret, endpoint sync tidak bisa dipakai
+  const secret = process.env.CRON_SECRET?.trim();
+  if (!secret || secret.length < 24) return "disabled"; // fail closed: tanpa secret yang kuat, endpoint sync tidak bisa dipakai
   const match = /^Bearer\s+(.+)$/i.exec(request.headers.get("authorization") ?? "");
   if (!match || !match[1]) return "unauthorized";
   return safeEqual(match[1].trim(), secret) ? "ok" : "unauthorized";

@@ -2,7 +2,7 @@ import "server-only";
 import { createHash, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { getEnv } from "./env";
+import { readAdminEnv } from "./admin-env";
 import {
   SESSION_COOKIE,
   SESSION_TTL_SECONDS,
@@ -12,15 +12,7 @@ import {
 } from "./session";
 
 function adminSecrets() {
-  try {
-    const env = getEnv();
-    if (env.ADMIN_USER && env.ADMIN_PASSWORD && env.CRON_SECRET) {
-      return { user: env.ADMIN_USER, password: env.ADMIN_PASSWORD, cron: env.CRON_SECRET };
-    }
-  } catch {
-    /* env tidak valid → admin dinonaktifkan */
-  }
-  return null;
+  return readAdminEnv(process.env); // mandiri: tidak ikut gagal bila variabel lain (mis. DATABASE_URL) tidak valid
 }
 
 const digest = (s: string) => createHash("sha256").update(s).digest();
@@ -32,8 +24,8 @@ export const adminEnabled = () => adminSecrets() !== null;
 export function checkCredentials(user: string, password: string): boolean {
   const s = adminSecrets();
   if (!s) return false;
-  const okUser = safeEqual(user, s.user);
-  const okPass = safeEqual(password, s.password);
+  const okUser = safeEqual(user.trim(), s.user);
+  const okPass = safeEqual(password.trim(), s.password);
   return okUser && okPass;
 }
 

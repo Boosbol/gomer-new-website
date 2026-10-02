@@ -8,6 +8,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
       : error === "invalid"
         ? "Username atau password salah."
         : null;
+  const showHelp = error === "invalid";
 
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-sm flex-col justify-center px-5">
@@ -17,6 +18,13 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         <p role="alert" className="mt-5 rounded-md border border-flare/60 px-4 py-3 text-sm text-flare">
           {message}
         </p>
+      ) : null}
+      {showHelp ? (
+        <ul className="mt-3 list-disc space-y-1 pl-5 text-xs text-mute">
+          <li>Pastikan isian tidak terisi otomatis oleh password lama dari browser.</li>
+          <li>Pastikan perubahan di Hostinger sudah selesai di-deploy ulang (status hijau).</li>
+          <li>Spasi di awal/akhir diabaikan; huruf besar-kecil dibedakan.</li>
+        </ul>
       ) : null}
       <form action={loginAction} className="mt-6 space-y-4">
         <label className="block text-sm">
