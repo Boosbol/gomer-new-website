@@ -1,61 +1,65 @@
 import "server-only";
 import { z } from "zod";
 import { site } from "../config/site";
+import { cleanEnvValue, isMysqlUrl, lowerEnvValue } from "./env-clean";
 
 /**
- * Validasi environment variable SERVER-SIDE. File ini memakai "server-only":
- * jika ada Client Component yang mengimpornya (langsung/tidak langsung), build gagal,
- * sehingga secret tidak mungkin masuk bundle browser.
+ * Validasi environment variable SERVER-SIDE (server-only: build gagal bila ada Client Component yang
+ * mengimpornya, sehingga secret tidak mungkin masuk bundle browser).
+ *
+ * Toleran: tiap variabel divalidasi sendiri-sendiri. Variabel yang bentuknya salah diabaikan (dianggap
+ * kosong) dan dicatat di envProblems() — satu variabel salah TIDAK lagi mematikan fitur lain.
+ * Kredensial admin & CRON_SECRET dibaca terpisah oleh src/lib/admin-env.ts.
  */
-const emptyToUndefined = (v: unknown) => (typeof v === "string" && v.trim() === "" ? undefined : v);
-const optional = <T extends z.ZodTypeAny>(inner: T) => z.preprocess(emptyToUndefined, inner.optional());
+const text = <T extends z.ZodTypeAny>(inner: T) => z.preprocess(cleanEnvValue, inner.optional());
+const flag = z.preprocess(lowerEnvValue, z.enum(["true", "false"]).optional());
 
-const schema = z.object({
-  SPOTIFY_CLIENT_ID: optional(z.string().trim()),
-  SPOTIFY_CLIENT_SECRET: optional(z.string().trim()),
-  SPOTIFY_REFRESH_TOKEN: optional(z.string().trim()),
-  YOUTUBE_CHANNEL_ID: optional(z.string().trim().regex(/^UC[\w-]{22}$/)),
-  DATABASE_URL: optional(z.string().trim().regex(/^mysql:\/\//, "harus berawalan mysql://")),
-  DATABASE_SSL: optional(z.enum(["true", "false"])),
-  CRON_SECRET: optional(z.string().min(24)),
-  ADMIN_USER: optional(z.string().trim()),
-  ADMIN_PASSWORD: optional(z.string().min(12)),
-  ENABLE_STALE_SYNC: optional(z.enum(["true", "false"])),
-  MUSIC_SOURCE: optional(z.enum(["apple", "spotify"])),
-});
+const fields = {
+  SPOTIFY_CLIENT_ID: text(z.string()),
+  SPOTIFY_CLIENT_SECRET: text(z.string()),
+  SPOTIFY_REFRESH_TOKEN: text(z.string()),
+  YOUTUBE_CHANNEL_ID: text(z.string().regex(/^UC[\w-]{22}$/)),
+  DATABASE_URL: text(z.string().refine(isMysqlUrl, "harus berawalan mysql://")),
+  DATABASE_SSL: flag,
+  ENABLE_STALE_SYNC: flag,
+  MUSIC_SOURCE: z.preprocess(lowerEnvValue, z.enum(["apple", "spotify"]).optional()),
+} satisfies Record<string, z.ZodTypeAny>;
 
-export type Env = z.infer<typeof schema>;
+export type Env = { [K in keyof typeof fields]: z.infer<(typeof fields)[K]> };
 
-let cached: Env | null = null;
+let cached: { env: Env; problems: string[] } | null = null;
 
-export function getEnv(): Env {
+function load() {
   if (cached) return cached;
-  const parsed = schema.safeParse(process.env);
-  if (!parsed.success) {
-    // Hanya nama variabel yang dilaporkan — tidak pernah nilainya.
-    const names = [...new Set(parsed.error.issues.map((i) => i.path.join(".")))].join(", ");
-    throw new Error(`Environment variable tidak valid: ${names}`);
+  const env: Record<string, unknown> = {};
+  const problems: string[] = [];
+  for (const [key, schema] of Object.entries(fields)) {
+    const result = schema.safeParse(process.env[key]);
+    if (result.success) env[key] = result.data;
+    else problems.push(key); // hanya nama variabel — tidak pernah nilainya
   }
-  cached = parsed.data;
+  cached = { env: env as Env, problems };
   return cached;
 }
 
+/** Tidak pernah melempar error. */
+export function getEnv(): Env {
+  return load().env;
+}
+
+/** Nama variabel yang nilainya tidak valid (diabaikan). */
+export function envProblems(): string[] {
+  return load().problems;
+}
+
 export function isSpotifyConfigured(): boolean {
-  try {
-    const env = getEnv();
-    return Boolean(env.SPOTIFY_CLIENT_ID && env.SPOTIFY_CLIENT_SECRET);
-  } catch {
-    return false;
-  }
+  const env = getEnv();
+  return Boolean(env.SPOTIFY_CLIENT_ID && env.SPOTIFY_CLIENT_SECRET);
 }
 
 /** Channel ID: env YOUTUBE_CHANNEL_ID menimpa nilai default di src/config/site.ts. Kosong = video nonaktif. */
 export function getYouTubeChannelId(): string | undefined {
-  try {
-    return getEnv().YOUTUBE_CHANNEL_ID ?? (site.youtubeChannelId || undefined);
-  } catch {
-    return site.youtubeChannelId || undefined;
-  }
+  return getEnv().YOUTUBE_CHANNEL_ID ?? (site.youtubeChannelId || undefined);
 }
 
 export function isYouTubeConfigured(): boolean {

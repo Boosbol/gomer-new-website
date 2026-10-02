@@ -1,6 +1,8 @@
 import "server-only";
 import { sql } from "drizzle-orm";
 import { getDb } from "@/lib/db";
+import { describeUrlStart } from "@/lib/env-clean";
+import { envProblems } from "@/lib/env";
 import { scrub } from "@/lib/logger";
 
 export const REQUIRED_TABLES = ["releases", "tracks", "videos", "sync_runs", "settings", "media", "gallery_sections"] as const;
@@ -52,21 +54,44 @@ function hintFor(code: string | null, message: string): string {
 
 /** Memeriksa koneksi database dan keberadaan semua tabel. Tidak pernah melempar error; tidak membocorkan secret. */
 export async function checkDatabase(): Promise<DatabaseStatus> {
+  const raw = process.env.DATABASE_URL;
+  const problems = envProblems();
+
+  if (!raw || raw.trim() === "") {
+    return {
+      configured: false,
+      connected: false,
+      hint: 'Variabel DATABASE_URL belum ada/kosong. Tambahkan di Environment variables aplikasi Node.js (nama harus persis "DATABASE_URL"), lalu tunggu deploy ulang.',
+      code: null,
+      missingTables: [],
+    };
+  }
+  if (problems.includes("DATABASE_URL")) {
+    return {
+      configured: false,
+      connected: false,
+      hint: `DATABASE_URL terbaca ${describeUrlStart(raw)}, padahal harus diawali "mysql://". Bentuk yang benar: mysql://USERNAME:PASSWORD@127.0.0.1:3306/NAMA_DATABASE — tanpa tanda kutip dan tanpa "jdbc:".`,
+      code: null,
+      missingTables: [],
+    };
+  }
+
   let db: ReturnType<typeof getDb>;
   try {
     db = getDb();
   } catch {
-    return { configured: false, connected: false, hint: "Environment variable tidak valid (cek DATABASE_URL: harus berawalan mysql://).", code: null, missingTables: [] };
+    return { configured: true, connected: false, hint: "Gagal menyiapkan koneksi database. Lihat Runtime Logs.", code: null, missingTables: [] };
   }
   if (!db) {
-    return { configured: false, connected: false, hint: "DATABASE_URL belum diisi di environment variables.", code: null, missingTables: [] };
+    return { configured: false, connected: false, hint: "DATABASE_URL tidak dapat dibaca. Periksa penulisannya.", code: null, missingTables: [] };
   }
 
   try {
     await db.execute(sql`select 1`);
   } catch (error) {
     const code = errorCode(error);
-    return { configured: true, connected: false, hint: hintFor(code, messageOf(error)), code, missingTables: [] };
+    const ignored = problems.length > 0 ? ` (Variabel lain yang bentuknya salah dan diabaikan: ${problems.join(", ")}.)` : "";
+    return { configured: true, connected: false, hint: hintFor(code, messageOf(error)) + ignored, code, missingTables: [] };
   }
 
   const missing: string[] = [];
@@ -77,11 +102,15 @@ export async function checkDatabase(): Promise<DatabaseStatus> {
       missing.push(table);
     }
   }
+  const ignored = problems.length > 0 ? `Variabel yang bentuknya salah dan diabaikan: ${problems.join(", ")}. ` : "";
   return {
     configured: true,
     connected: true,
     code: null,
     missingTables: missing,
-    hint: missing.length > 0 ? "Terhubung, tetapi tabel belum lengkap. Impor database/schema.sql lewat phpMyAdmin (tab Import)." : null,
+    hint:
+      missing.length > 0
+        ? `${ignored}Terhubung, tetapi tabel belum lengkap. Impor database/schema.sql lewat phpMyAdmin (tab Import).`
+        : ignored || null,
   };
 }
